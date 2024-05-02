@@ -1,1 +1,2 @@
-# multifractals
+# Multifractal Analysis
+
