@@ -51,7 +51,7 @@ def multifractals(cloudfield, R, Q = np.arange(1, 11)):
 
 ## Examples
 
-Notebooks demonstrating how to use `multifractalanalysis.py` for computing structure functions, scaling exponents, and multifractal parameters are contained in the `notebooks/` folder.
+`compute_multifractals.ipynb` contains a notebook demonstrating how to use `multifractalanalysis.py` for computing structure functions, scaling exponents, and multifractal parameters.
 
 ## Citing
 

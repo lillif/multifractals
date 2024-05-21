@@ -54,7 +54,7 @@ def multifractals(cloudfield, R, Q = np.arange(1, 11)):
     
     moments = calc_moments(cloudfield, R, Q)
 
-    zetas = np.zeros(len(Q)+1)
+    zetas = np.zeros(len(Q))
     logR = np.log(R)
 
     fittingRange = np.where((R >= 16) & (R <= 64))[0]
@@ -62,7 +62,7 @@ def multifractals(cloudfield, R, Q = np.arange(1, 11)):
     warned=False
 
     for q in Q:
-        normQthMoment = moments[:, q-1] / moments[0, q-1]
+        normQthMoment = moments[:, q] / moments[0, q]
         logNormMoment = np.log(normQthMoment)
 
         a = linreg(logR[fittingRange], logNormMoment[fittingRange])[0]
