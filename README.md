@@ -3,7 +3,7 @@
 This respository provides python scripts and jupyter notebook examples for conducting multifractal analysis.
 
 
-## Theory
+## Theoretical Overview
 
 For some one-dimensional signal $\theta (x)$, we compute the $q\text{th}$ order structure function as:
 
