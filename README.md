@@ -1,6 +1,6 @@
 # Multifractal Analysis
 
-This repository accompanies the paper "Multifractal Analysis for Evaluating the Representation of Clouds in Global Kilometre-Scale Models" by Lilli J. Freischem, Philipp Weiss, Hannah Christensen, and Philip Stier, submitted to Geophysical Research Letters. Here, we provide Python scripts and Jupyter Notebook examples for conducting multifractal analysis.
+This repository accompanies the paper "Multifractal Analysis for Evaluating the Representation of Clouds in Global Kilometre-Scale Models" by Lilli J. Freischem, Philipp Weiss, Hannah M. Christensen, and Philip Stier, submitted to Geophysical Research Letters. Here, we provide Python scripts and Jupyter Notebook examples for conducting multifractal analysis.
 
 
 
