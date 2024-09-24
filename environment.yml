@@ -1,0 +1,14 @@
+name: multifractals
+channels:
+  - conda-forge
+  - anaconda
+dependencies:
+  - ipykernel
+  - cartopy
+  - matplotlib
+  - numpy
+  - scipy
+  - seaborn
+  - xarray
+  - netcdf4
+
