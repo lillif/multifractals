@@ -58,13 +58,13 @@ def multifractals(cloudfield, R, Q = np.arange(1, 11)):
 ## Citing
 
 ```bibtex
-@misc{LF2024Multifractals,
-  author = {Lilli Freischem},
-  title = {Multifractal Analysis},
-  year = {2024},
-  publisher = {GitHub},
-  journal = {GitHub repository},
-  url = {https://github.com/lillif/multifractals}
+@software{freischem2024,
+  author       = {Freischem, Lilli Johanna},
+  title        = {Multifractal Analysis of Clouds},
+  year         = 2024,
+  publisher    = {Zenodo},
+  doi          = {10.5281/zenodo.13832882},
+  url          = {https://doi.org/10.5281/zenodo.13832882}
 }
 ```
 
