@@ -7,6 +7,11 @@ from mpl_toolkits.axes_grid1.inset_locator import inset_axes
 import numpy as np
 import matplotlib.axes as mpl_axes
 
+import random
+
+from typing import Optional
+from scipy.optimize import curve_fit
+
 def plot_moments(moments: np.ndarray,
                  R: np.ndarray,
                  Q: np.ndarray,
@@ -15,7 +20,8 @@ def plot_moments(moments: np.ndarray,
                  fitting_range: tuple[int, int],
                  pixel_reso: float = 0.05,
                  normalise: bool = True,
-                 colours = sns.color_palette("flare", n_colors=10)): # : sns.palettes._ColorPalette 
+                 colours = sns.color_palette("flare", n_colors=10),
+                 plot_fitting_range: bool = True): # : sns.palettes._ColorPalette 
     
     R = R * pixel_reso * 111 # 0.05 degrees, 1 degree approx = 111km, 1km = 1e3m
     
@@ -38,9 +44,10 @@ def plot_moments(moments: np.ndarray,
         
     ylims = ax.get_ylim()
 
-    ax.fill_between(R, 0, ylims[1], 
-                    where = (R >= fitting_range[0] * pixel_reso * 111 ) & (R <= fitting_range[1] * pixel_reso * 111),
-                    facecolor='red', alpha=0.1, label='fitting range')
+    if plot_fitting_range:
+        ax.fill_between(R, 0, ylims[1], 
+                        where = (R >= fitting_range[0] * pixel_reso * 111 ) & (R <= fitting_range[1] * pixel_reso * 111),
+                        facecolor='red', alpha=0.1, label='fitting range')
 
     ax.set_xlabel('r (km)')
 
@@ -62,6 +69,94 @@ def plot_moments(moments: np.ndarray,
     ax.set_ylim(ylims)
 
 
+
+
+def ZetaFunc(q, a, zeta_inf):
+    zeta_q = a * q / (1 + a * q / zeta_inf)
+    return zeta_q
+
+def zeta_bounds_plot(Q: np.ndarray,
+                     zetas: np.ndarray,
+                     par: dict,
+                     ax: mpl_axes.Axes,
+                     label: str, 
+                     color: str, 
+                     bounds: Optional[np.ndarray]=None,
+                     showpar: bool=True):
+    
+    if showpar:
+        ax.plot(Q,
+                zetas,
+                'x',
+                markersize=4,
+                markeredgewidth=1.5,
+                color=color,
+                label=label + fr' (a={par["a"]:.2f}, $\zeta_\infty$={par["zeta_infinity"]:.2f})',
+                zorder=2)
+    else:
+        ax.plot(Q,
+                zetas,
+                'x',
+                markersize=4,
+                markeredgewidth=1.5,
+                color=color,
+                label=label,
+                zorder=2)
+    
+    ax.plot(Q,
+            ZetaFunc(Q, par['a'], par['zeta_infinity']),
+            '-',
+            color=color,#'grey',
+            zorder=1)
+    
+    if bounds is not None:
+        ax.fill_between(Q,
+                        bounds[0],
+                        bounds[1],
+                        color=color,
+                        alpha=0.3)
+    
+    ax.set_xlabel('q')
+    ax.set_ylabel(r'$\zeta_q$')
+
+
+
+def bootstrap_zetas(zetas: list,
+                    n_bootstrap: float):
+    sample_mean_zeta = []
+    num_samples = len(zetas)
+    for i in range(n_bootstrap):
+        sample_zetas = random.choices(zetas, k=num_samples)
+        sample_mean_zeta.append(np.mean(sample_zetas, axis=0))
+    return sample_mean_zeta
+
+
+def get_conf_intervals(zeta_samples: list,
+                       bootstrap_confidence_percentage: float):
+    
+    sorted_curves = np.sort(np.array(zeta_samples), axis=0)    
+    
+    # n_B = len(zeta_samples)
+    n_bootstrap = len(zeta_samples)
+    bounds_percentage_each_side = (100 - bootstrap_confidence_percentage) / 2
+
+    left_bound_idx = int(n_bootstrap * bounds_percentage_each_side / 100)
+    right_bound_idx = int(n_bootstrap * (100 - bounds_percentage_each_side) / 100)
+    
+    bounds = (sorted_curves[left_bound_idx], sorted_curves[right_bound_idx])
+    
+    return bounds
+
+def get_bounds_from_zeta_dict(zeta_dict: dict,
+                              n_bootstrap: int = 1000,
+                              bootstrap_confidence_percentage: float=95):
+    
+    zeta_samples =  bootstrap_zetas(list(zeta_dict.values()),
+                                    n_bootstrap=n_bootstrap)
+    
+    zeta_bounds = get_conf_intervals(zeta_samples=zeta_samples,
+                                    bootstrap_confidence_percentage=bootstrap_confidence_percentage)
+    return zeta_bounds
 
 
 def plot_diurnal_bootstrap(zetas: dict,
@@ -99,5 +194,6 @@ def plot_diurnal_bootstrap(zetas: dict,
     
     ax.set_xlabel(f'Local time (GMT{GMT_delta:.0f})', fontsize=10)
     ax.set_xlim([0,23])
-    
+
+    ax.set_ylabel(r'$\zeta_\infty$')
     return line
