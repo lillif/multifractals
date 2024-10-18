@@ -18,6 +18,9 @@ from datetime import datetime
 import json
 
 
+import pyicon as pyic
+
+
 ## TODO: decide whether to store the results in the class or return them
 ## need to decide how to store the results, e.g. in a dictionary or as attributes
 ## test how big the results would be -- could make it an option to store them or return them
@@ -33,17 +36,16 @@ class Multifractals:
                  radii: np.ndarray,
                  fitting_range: tuple[int, int],
                  Q: np.ndarray = np.arange(1,11),
-                 time_coord_name: str = 'time',
+                 healpix: bool = False,
                 ):
         
         self.input_dataset = input_dataset # input dataset containing the field to be analyzed
         self.input_field = input_field # name of the field to be analyzed
-        self.reso = reso # resolution of the input fields in degrees
+        self.reso = reso # resolution of the input fields in degrees (if healpix: resolution the field will be interpolated to)
         self.radii = radii # list of radii (pixel distances) to be used in the analysis
         self.fitting_range = fitting_range
         self.Q = Q # moments of orders Q to be calculated
-        self.time_coord_name = time_coord_name # coordinate name of time coordinate in dataset
-        
+        self.healpix = healpix # whether input dataset is on a healpix grid
 
     def _calculate_moments(self, input_snapshot: np.ndarray):
         """
@@ -131,9 +133,24 @@ class Multifractals:
         return moments, zetas
 
 
+    def _standardise_coord_names(ds: xr.Dataset):
+        if 'lon' not in list(ds.coords) and 'longitude' in list(ds.coords):
+            ds = input_snapshots.rename({'longitude': 'lon'})
+
+        if 'lat' not in list(ds.coords) and 'latitude' in list(ds.coords):
+            ds = ds.rename({'latitude': 'lat'})
+
+        if 'time' not in list(ds.coords) and 't' in list(ds.coords):
+            ds = input_snapshots.rename({'t': 'time'})
+
+        if 'lon' not in list(ds.coords) or 'lat' not in list(ds.coords) or 'time' not in list(ds.coords):
+            logger.error(f'input_snapshots does not contain lat/lon or time coordinates (coords are: {list(ds.coords)})')
+        return ds
+
+
     def multifractal_analysis(self,
-                              latitude_bounds: Optional[tuple[int, int]] = None,
-                              longitude_bounds: Optional[tuple[int, int]] = None,
+                              latitude_bounds: tuple[int, int] = [-90, 90],
+                              longitude_bounds: tuple[int, int] = [-180, 180],
                               time_bounds: Optional[tuple[int, int]] = None):
 
         """
@@ -151,27 +168,34 @@ class Multifractals:
             Tuple containing the minimum and maximum time values to be analyzed, by default None
         """
 
-        # Method to perform multifractal analysis on the input field
         moments = {}
         zetas = {}
         # subset the input dataset to the region of interest
         input_snapshots = self.input_dataset[self.input_field]
-        
-        # TODO: make independent of variables named lon or longitude!
-        if latitude_bounds is not None: 
-            input_snapshots = input_snapshots.sel(lat=slice(latitude_bounds[0], latitude_bounds[1]))
-        if longitude_bounds is not None: 
-            input_snapshots = input_snapshots.sel(lon=slice(longitude_bounds[0], longitude_bounds[1]))
-        if time_bounds is not None:
-            # TODO: make independent of time bounds (using where x >= b[0] and t <= b[1])
+
+        # check coordinate naming and fix as needed
+        input_snapshots = self._standardise_coord_names(input_snapshots)
+
+        # if input_dataset is healpix, use pyicon to interpolate the region of interest inside the loop below
+        if self.healpix:
             input_snapshots = input_snapshots.sel(time=slice(time_bounds[0], time_bounds[1]))
+
+        else:
+            input_snapshots = input_snapshots.sel(lat=slice(latitude_bounds[0], latitude_bounds[1]))
+            input_snapshots = input_snapshots.sel(lon=slice(longitude_bounds[0], longitude_bounds[1]))
+            if time_bounds is not None:
+                input_snapshots = input_snapshots.sel(time=slice(time_bounds[0], time_bounds[1]))
         
         # loop over times to calculate the multifractal parameters
-        # for t in input_snapshots.time:
-        for t in input_snapshots[self.time_coord_name].values:
-            # shallow_conv_4x4deg.where(shallow_conv_4x4deg[time_coord_name] == t, drop=True))
-            input_snapshot = input_snapshots.where(input_snapshots[self.time_coord_name]==t, drop=True).values
-            # t_key = np.datetime_as_string(t.values, unit='s')
+        for t in input_snapshots.time.values:
+            input_snapshot = input_snapshots.sel(time=t)
+            
+            if self.healpix:
+                input_snapshot = pyic.hp_to_rectgrid(
+                    input_snapshot, lon_reg=latitude_bounds, lat_reg=latitude_bounds, res=self.reso
+                )
+
+            input_snapshot = input_snapshots.values
             if isinstance(t, np.datetime64):
                 t_key = np.datetime_as_string(t, unit='s')
             elif type(t) == str:
@@ -180,8 +204,6 @@ class Multifractals:
                 logger.error(f"time coordinate type is {type(t)} but must be 'str' or 'np.datetime'")
             moments[t_key], zetas[t_key] = self._calculate_multifractals(input_snapshot)
         
-        # TODO: decide whether to store the results in the class or return them
-        # TODO: how to handle multiple regions?? need to create new class every time if storing results in class
         self.moments = moments
         self.zetas = zetas
 
